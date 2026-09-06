@@ -8,7 +8,7 @@
 
 > A production-grade Machine Learning fraud screening system tackling **extreme class imbalance** (2% fraud rate) with cost-sensitive classification, engineered risk features, and an interactive Streamlit real-time transaction screening dashboard. Demonstrates the most critical real-world ML challenge in financial technology: catching every fraudulent transaction while minimizing false positives on legitimate cardholders.
 
-📖 **[Read the Pro Concepts & Technical Interview Guide](./CONCEPTS_AND_INTERVIEW_GUIDE.md)** for cost-sensitive loss derivations, PR-AUC vs. ROC-AUC mathematical proof, threshold economics, and top 10 interview Q&A.
+📑 **[Technical Architecture & System Specification](./docs/ARCHITECTURE.md)**: Deep dive into cost-sensitive optimization, PR-AUC vs. ROC-AUC mathematical proof, threshold economics, and engineering tradeoffs.
 
 ---
 
