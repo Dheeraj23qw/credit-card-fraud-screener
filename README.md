@@ -4,7 +4,7 @@
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.4%2B-orange.svg)](https://scikit-learn.org/)
 [![XGBoost](https://img.shields.io/badge/XGBoost-2.0%2B-red.svg)](https://xgboost.readthedocs.io/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B.svg)](https://streamlit.io/)
-[![Status](https://img.shields.io/badge/Status-Completed-success.svg)]()
+[![Status](https://img.shields.io/badge/Status-Completed-success.svg)](https://github.com/Dheeraj23qw/credit-card-fraud-screener)
 
 > A production-grade Machine Learning fraud screening system tackling **extreme class imbalance** (2% fraud rate) with cost-sensitive classification, engineered risk features, and an interactive Streamlit real-time transaction screening dashboard. Demonstrates the most critical real-world ML challenge in financial technology: catching every fraudulent transaction while minimizing false positives on legitimate cardholders.
 
@@ -73,11 +73,11 @@ flowchart LR
 | :--- | :---: |
 | **PR-AUC (Average Precision)** | `0.9429` |
 | **ROC-AUC** | `0.9984` |
-| **Optimal Decision Threshold** | `0.52` |
-| **Fraud Detection Recall** | `87.50%` (35/40 frauds caught) |
-| **Precision** | `85.37%` |
-| **F1-Score** | `0.8642` |
-| **Confusion Matrix** | TN=1954, FP=6, FN=5, TP=35 |
+| **Optimal Decision Threshold (from CV)** | `0.74` |
+| **Fraud Detection Recall** | `77.50%` (31/40 frauds caught) |
+| **Precision** | `88.57%` |
+| **F1-Score** | `0.8267` |
+| **Confusion Matrix** | TN=1956, FP=4, FN=9, TP=31 |
 
 ---
 

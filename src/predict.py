@@ -36,7 +36,7 @@ def load_fraud_model_assets():
     return _MODEL, _METRICS, _FEATURE_IMPORTANCES
 
 
-def analyze_transaction_risk_drivers(tx_dict: Dict[str, Any], prob: float) -> List[str]:
+def analyze_transaction_risk_drivers(tx_dict: Dict[str, Any]) -> List[str]:
     """Generates explainable risk reasons for the transaction."""
     reasons = []
     
@@ -81,15 +81,17 @@ def screen_transaction(tx_data: Union[Dict[str, Any], pd.DataFrame], threshold: 
     opt_thresh = metrics.get("test_metrics", {}).get("optimal_threshold", 0.5) if metrics else 0.5
     active_threshold = threshold if threshold is not None else opt_thresh
     
-    if isinstance(tx_data, dict):
+    tx_payload = tx_data.copy() if isinstance(tx_data, dict) else tx_data
+    
+    if isinstance(tx_payload, dict):
         # Ensure PCA features exist if not provided
-        if "Risk_Score_V1" not in tx_data:
-            tx_data["Risk_Score_V1"] = -2.5 if float(tx_data.get("Amount", 0)) > 1000 and float(tx_data.get("Distance_from_Home_KM", 0)) > 200 else 0.1
-        if "Risk_Score_V2" not in tx_data:
-            tx_data["Risk_Score_V2"] = 3.0 if float(tx_data.get("Amount", 0)) > 1000 and float(tx_data.get("Distance_from_Home_KM", 0)) > 200 else -0.1
-        df = pd.DataFrame([tx_data])
+        if "Risk_Score_V1" not in tx_payload:
+            tx_payload["Risk_Score_V1"] = -2.5 if float(tx_payload.get("Amount", 0)) > 1000 and float(tx_payload.get("Distance_from_Home_KM", 0)) > 200 else 0.1
+        if "Risk_Score_V2" not in tx_payload:
+            tx_payload["Risk_Score_V2"] = 3.0 if float(tx_payload.get("Amount", 0)) > 1000 and float(tx_payload.get("Distance_from_Home_KM", 0)) > 200 else -0.1
+        df = pd.DataFrame([tx_payload])
     else:
-        df = tx_data.copy()
+        df = tx_payload.copy()
         if "Risk_Score_V1" not in df.columns:
             df["Risk_Score_V1"] = 0.1
         if "Risk_Score_V2" not in df.columns:
@@ -112,8 +114,8 @@ def screen_transaction(tx_data: Union[Dict[str, Any], pd.DataFrame], threshold: 
         badge_color = "#10B981"
         
     drivers = []
-    if isinstance(tx_data, dict):
-        drivers = analyze_transaction_risk_drivers(tx_data, prob)
+    if isinstance(tx_payload, dict):
+        drivers = analyze_transaction_risk_drivers(tx_payload)
         
     return {
         "fraud_probability": prob,

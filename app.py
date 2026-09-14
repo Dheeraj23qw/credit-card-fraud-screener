@@ -14,12 +14,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
 
 from predict import screen_transaction, load_fraud_model_assets
 
-st.set_page_config(
-    page_title="Credit Card Fraud Screener",
-    page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+try:
+    st.set_page_config(
+        page_title="Credit Card Fraud Screener & Anomaly Intelligence",
+        page_icon="🛡️",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+except Exception:
+    pass
 
 st.markdown("""
 <style>
@@ -33,13 +36,6 @@ st.markdown("""
         font-size: 1.05rem;
         color: #64748B;
         margin-bottom: 1.5rem;
-    }
-    .verdict-card {
-        border-radius: 12px;
-        padding: 1.5rem;
-        color: white;
-        text-align: center;
-        margin-bottom: 1.2rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -70,12 +66,17 @@ def create_fraud_gauge(prob: float):
     return fig
 
 
+@st.cache_resource
+def get_fraud_assets():
+    return load_fraud_model_assets()
+
+
 def main():
     st.markdown('<div class="main-header">🛡️ Real-Time Credit Card Fraud Screener</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Cost-Sensitive ML with XGBoost, Extreme Imbalance Handling & Explainable Risk Scoring</div>', unsafe_allow_html=True)
 
     try:
-        model, metrics, feat_importances = load_fraud_model_assets()
+        model, metrics, feat_importances = get_fraud_assets()
     except Exception as e:
         st.error(f"⚠️ Model artifacts not found. Please run training script first: `python src/train.py`\n\nError: {e}")
         st.stop()
@@ -278,38 +279,26 @@ def main():
             * **High Precision (Higher Threshold)**: Minimizes customer friction, but permits stealthier fraudulent transactions to pass through.
             """)
             
-            thresholds = np.linspace(0.1, 0.9, 17)
-            recalls = [0.975, 0.950, 0.925, 0.900, 0.875, 0.850, 0.825, 0.775, 0.725, 0.650, 0.575, 0.500, 0.425, 0.350, 0.275, 0.200, 0.125]
-            precisions = [0.450, 0.560, 0.680, 0.780, 0.854, 0.890, 0.915, 0.935, 0.950, 0.965, 0.975, 0.982, 0.988, 0.992, 0.995, 0.998, 1.000]
-            f1s = [2 * (p * r) / (p + r) for p, r in zip(precisions, recalls)]
-            
-            pr_df = pd.DataFrame({
-                "Threshold": np.round(thresholds, 2),
-                "Precision": precisions,
-                "Recall (Fraud Catch Rate)": recalls,
-                "F1-Score": np.round(f1s, 4)
-            })
-            
-            fig_pr = px.line(
-                pr_df,
-                x="Recall (Fraud Catch Rate)",
-                y="Precision",
-                hover_data=["Threshold", "F1-Score"],
-                markers=True,
-                title=f"Precision-Recall Curve (PR-AUC: {tm['pr_auc']:.4f})",
-                color_discrete_sequence=["#DC2626"]
-            )
-            fig_pr.add_scatter(
-                x=[tm['recall']],
-                y=[tm['precision']],
-                mode="markers+text",
-                marker=dict(size=14, color="#10B981", symbol="star"),
-                text=[f"Optimal Threshold ({tm['optimal_threshold']:.2f})"],
-                textposition="top left",
-                name="Tuned Operating Point"
-            )
-            fig_pr.update_layout(height=400)
-            st.plotly_chart(fig_pr, use_container_width=True)
+            # Load PR curve from model metrics (computed during training)
+            pr_curve = metrics.get("pr_curve", None)
+            if pr_curve:
+                fig_pr = go.Figure()
+                fig_pr.add_trace(go.Scatter(
+                    x=pr_curve["recalls"],
+                    y=pr_curve["precisions"],
+                    mode="lines+markers",
+                    name="PR Curve",
+                    line=dict(color="#4F46E5", width=2)
+                ))
+                fig_pr.update_layout(
+                    title="Precision-Recall Curve (from Test Evaluation)",
+                    xaxis_title="Recall",
+                    yaxis_title="Precision",
+                    template="plotly_white"
+                )
+                st.plotly_chart(fig_pr, use_container_width=True)
+            else:
+                st.info("PR Curve data not available. Retrain the model to generate it.")
 
     with tab3:
         st.subheader("📁 Batch Transaction Log Screening")
@@ -331,11 +320,15 @@ def main():
                     batch_df["Fraud_Probability"] = np.round(probs, 4)
                     batch_df["Decision"] = ["BLOCK" if p >= 0.7 else ("2FA_CHALLENGE" if p >= 0.35 else "APPROVE") for p in probs]
                     
-                    st.success("Batch Screening Complete!")
-                    st.dataframe(batch_df[["Decision", "Fraud_Probability", "Amount", "Merchant_Category", "Transaction_Method"]].head(20))
-                    
-                    csv = batch_df.to_csv(index=False).encode('utf-8')
-                    st.download_button("Download Screened Transactions CSV", csv, "screened_transactions_output.csv", "text/csv")
+                    st.session_state["batch_results"] = batch_df
+            
+            if "batch_results" in st.session_state:
+                res_df = st.session_state["batch_results"]
+                st.success("Batch Screening Complete!")
+                st.dataframe(res_df[["Decision", "Fraud_Probability", "Amount", "Merchant_Category", "Transaction_Method"]].head(20))
+                
+                csv = res_df.to_csv(index=False).encode('utf-8')
+                st.download_button("Download Screened Transactions CSV", csv, "screened_transactions_output.csv", "text/csv")
 
 
 if __name__ == "__main__":

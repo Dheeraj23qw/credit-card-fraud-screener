@@ -187,8 +187,15 @@ def train_and_save():
     best_pipeline = tune_xgboost_fraud_model(X_train, y_train)
     
     # 5. Held-out Test Set Evaluation
+    from sklearn.model_selection import cross_val_predict
+
+    # Find optimal threshold using out-of-fold predictions (no test data leakage)
+    print("Finding optimal threshold via cross-validation on training set...", flush=True)
+    oof_probs = cross_val_predict(best_pipeline, X_train, y_train, cv=5, method="predict_proba")[:, 1]
+    optimal_thresh = find_optimal_fraud_threshold(y_train.values, oof_probs)
+    print(f"Optimal threshold (from CV): {optimal_thresh:.2f}", flush=True)
+
     y_probs = best_pipeline.predict_proba(X_test)[:, 1]
-    optimal_thresh = find_optimal_fraud_threshold(y_test.values, y_probs)
     y_pred_optimal = (y_probs >= optimal_thresh).astype(int)
     
     test_pr_auc = float(average_precision_score(y_test, y_probs))
@@ -197,6 +204,17 @@ def train_and_save():
     test_precision = float(precision_score(y_test, y_pred_optimal))
     test_f1 = float(f1_score(y_test, y_pred_optimal))
     conf_mat = confusion_matrix(y_test, y_pred_optimal).tolist()
+    
+    from sklearn.metrics import precision_recall_curve
+
+    precisions_arr, recalls_arr, thresholds_arr = precision_recall_curve(y_test, y_probs)
+    # Downsample for storage (keep ~20 evenly spaced points)
+    step = max(1, len(thresholds_arr) // 20)
+    pr_curve_data = {
+        "precisions": [round(float(p), 4) for p in precisions_arr[::step]],
+        "recalls": [round(float(r), 4) for r in recalls_arr[::step]],
+        "thresholds": [round(float(t), 4) for t in thresholds_arr[::step]]
+    }
     
     metrics = {
         "cv_results": cv_df.to_dict(orient="records"),
@@ -208,7 +226,8 @@ def train_and_save():
             "precision": test_precision,
             "f1_score": test_f1,
             "confusion_matrix": conf_mat
-        }
+        },
+        "pr_curve": pr_curve_data
     }
     
     print("\n" + "=" * 65, flush=True)
